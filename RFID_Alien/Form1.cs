@@ -41,6 +41,11 @@ namespace RFID_Alien
             {
                 streamWriter = new StreamWriter(filePath, true);
             }
+            if (streamWriter.BaseStream == null)
+            {
+                streamWriter = null;
+                streamWriter = new StreamWriter(filePath, true);
+            }
             return streamWriter;
         }
         /// <summary>
@@ -52,6 +57,11 @@ namespace RFID_Alien
         {
             if (streamLogWriter == null)
             {
+                streamLogWriter = new StreamWriter(filePath, true);
+            }
+            if (streamLogWriter.BaseStream == null)
+            {
+                streamLogWriter = null;
                 streamLogWriter = new StreamWriter(filePath, true);
             }
             return streamLogWriter;
@@ -77,6 +87,14 @@ namespace RFID_Alien
         private void WriteText(string status)
         {
             textBox_status.Invoke(new updateTextStatusDelegate(updateTextStatus),status);
+        }
+        private void CloseData()
+        {
+            getWriter(filePath).Close();
+        }
+        private void CloseLog()
+        {
+            getLogWriter("log.log").Close();
         }
         private delegate void updateTextStatusDelegate(string message);
         private void updateTextStatus(string message)
@@ -309,39 +327,6 @@ namespace RFID_Alien
             }
         }
 
-        private void DataReceived(string data)
-        {
-            try
-            {
-                if (data != null && data.Length > 0 &&data.IndexOf("No Tags")==-1)
-                {
-                    /*TagInfo[] tags;
-                    int count = AlienUtils.ParseTagList(data, out tags);
-                    foreach (TagInfo info in tags)
-                    {*/
-                        if (radioButton_Individual.Checked)
-                        {
-                            fileNameNew = fileName.Trim() + "_" + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "Tz" + convertTimeZone(TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).ToString()) + ".csv";
-                            filePath = Path.Combine(Path.GetDirectoryName(filePath), fileNameNew);
-                            WriteLog("Date will be written to " + filePath + "   at " + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "Tz" + convertTimeZone(TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).ToString()) + "\n");
-                        }
-                        if (radioButton_Combined.Checked)
-                        {
-                            filePath = Path.Combine(Path.GetDirectoryName(filePath), fileNameNew);
-                            WriteLog("Date will be written to " + filePath + "   at " + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "Tz" + convertTimeZone(TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).ToString()) + "\n");
-                        }
-                        WriteData(data, DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "Tz" + convertTimeZone(TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).ToString()));
-                        WriteText(data + "\n");
-                   // }
-                }
-            }
-            catch (Exception ex)
-            {
-                WriteLog(ex.ToString());
-                WriteText("Exception Occured. See the Log File...\n");
-            }
-        }
-
         private void listBox_Devices_SelectedIndexChanged(object sender, EventArgs e)
         {
             try
@@ -438,7 +423,7 @@ namespace RFID_Alien
                 int count = 0;
                 reader.TagListFormat = "Text";
                 string result = reader.TagList;
-//                if(result!=null && result.Length > 0 && result.IndexOf("No Tags")==-1)
+                //                if(result!=null && result.Length > 0 && result.IndexOf("No Tags")==-1)
                 if ((result != null) && (result.Length > 0) && (result.IndexOf("No Tags") == -1))
                 {
                     try
@@ -447,12 +432,21 @@ namespace RFID_Alien
                     }
                     catch (Exception ex)
                     {
-                        WriteText("Error\n");
+                        //WriteText("Error\n");
                     }
-                    if(count>0)
+                    if (count > 0)
                     {
-                        foreach(TagInfo info in tagInfo)
+                        foreach (TagInfo info in tagInfo)
                         {
+                            string dataString = info.TagID;
+                            string dateString = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "Tz" + convertTimeZone(TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).ToString());
+                            if (radioButton_Individual.Checked)
+                            {
+                                fileNameNew = fileName.Trim() + "_" + DateTime.Now.ToString("yyyyMMddHHmmssfff") + "Tz" + convertTimeZone(TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).ToString()) + ".csv";
+                                filePath = Path.Combine(Path.GetDirectoryName(filePath), fileNameNew);
+                                WriteData("Barcode", "TimeStamp");
+                                WriteLog("Date will be written to " + filePath + "   at " + DateTime.Now.ToString("yyyyMMddHHmmssfff") + "Tz" + convertTimeZone(TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).ToString()) + "\n");
+                            }
                             if (radioButton_Individual.Checked)
                             {
                                 fileNameNew = fileName.Trim() + "_" + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "Tz" + convertTimeZone(TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).ToString()) + ".csv";
@@ -464,21 +458,23 @@ namespace RFID_Alien
                             {
                                 filePath = Path.Combine(Path.GetDirectoryName(filePath), fileNameNew);
                                 WriteLog("Date will be written to " + filePath + "   at " + DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "Tz" + convertTimeZone(TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).ToString()) + "\n");
-                                //textBox_FileName.Text = Path.GetFileNameWithoutExtension(filePath);
                             }
-                            WriteData(info.TagID, DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + "Tz" + convertTimeZone(TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).ToString()));
-                            WriteText(info.TagID);
+                            WriteData(dataString, dateString);
+                            WriteText(dataString);
                         }
                     }
                     reader.ClearTagList();
-                    
                 }
-                
             }
             catch (Exception ex)
             {
                 WriteLog(ex.ToString());
                 WriteText("Exception Occured. See the Log File...\n");
+            }
+            finally
+            {
+                CloseData();
+                CloseLog();
             }
         }
        
